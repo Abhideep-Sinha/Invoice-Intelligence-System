@@ -1,49 +1,45 @@
+from pathlib import Path
+
 import joblib
 import pandas as pd
 
-from predict_freight import predict_freight_cost
+MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
+MODEL_PATH = MODELS_DIR / "predict_flag_invoice.pkl"
+SCALER_PATH = MODELS_DIR / "scaler.pkl"
 
-MODEL_PATH = "models/predict_flag_invoice.pkl"
+FEATURES = [
+    "invoice_quantity",
+    "invoice_dollars",
+    "Freight",
+    "total_item_quantity",
+    "total_item_dollars",
+]
 
 
-def load_model(model_path: str = MODEL_PATH):
-    """
-    Load trained classifier model.
-    """
+def load_model(model_path=MODEL_PATH):
+    """Load trained classifier model."""
     with open(model_path, "rb") as f:
-        model = joblib.load(f)
-
-    return model
+        return joblib.load(f)
 
 
 def predict_invoice_flag(input_data):
-    """
-    Predict invoice flag for new vendor invoices.
-
-    Parameters
-    ----------
-    input_data : dict
-        Input features for the invoice prediction.
-
-    Returns
-    -------
-    pd.DataFrame with predicted flag.
-    """
-
+    """Predict invoice flag for new vendor invoices."""
     model = load_model()
+    scaler = joblib.load(SCALER_PATH)
 
-    # Convert input dictionary to DataFrame
-    input_df = pd.DataFrame(input_data)
+    input_df = pd.DataFrame(input_data)[FEATURES]
+    scaled = scaler.transform(input_df)
 
-    input_df["predicted_flag"] = model.predict(input_df).round()
-
+    input_df["predicted_flag"] = model.predict(scaled).astype(int)
     return input_df
 
-if __name__== '__main__':
-    #Example inference run(local testing)
-    sample_data={
-        "Dollars" :[18500, 9000]
+
+if __name__ == "__main__":
+    sample_data = {
+        "invoice_quantity": [50],
+        "invoice_dollars": [352.95],
+        "Freight": [1.73],
+        "total_item_quantity": [162],
+        "total_item_dollars": [2476.0],
     }
-    prediction=predict_freight_cost(sample_data)
-    print(prediction)
-    
+    print(predict_invoice_flag(sample_data))

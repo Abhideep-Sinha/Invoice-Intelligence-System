@@ -1,8 +1,9 @@
 import joblib
 import pandas as pd
 
-MODEL_PATH = "models/predict_freight_model.pkl"
+from pathlib import Path
 
+MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "predict_freight_model.pkl"
 
 def load_model(model_path: str = MODEL_PATH):
     """
