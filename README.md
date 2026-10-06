@@ -1,16 +1,19 @@
 # Inventory & Invoice Analytics
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://abhideep-sinha-invoice-intelligence-system-app-zctqvf.streamlit.app/)
+
+**🚀 Live demo: https://abhideep-sinha-invoice-intelligence-system-app-zctqvf.streamlit.app/**
+
 A machine learning project built on a vendor inventory database. It includes two models and a Streamlit web app to use them:
 
 1. **Freight Cost Prediction**: predicts the freight (shipping) cost for an order.
 2. **Invoice Risk Flagging**: classifies vendor invoices as normal or risky (needs manual review).
 
-> Items marked **TODO** are details I could not confirm from the code. Please check them and edit.
-
 ---
 
 ## Table of Contents
 
+- [Live Demo](#live-demo)
 - [Problem Statement](#problem-statement)
 - [Project Structure](#project-structure)
 - [Data](#data)
@@ -21,6 +24,16 @@ A machine learning project built on a vendor inventory database. It includes two
 - [Tech Stack](#tech-stack)
 - [Troubleshooting](#troubleshooting)
 - [Future Improvements](#future-improvements)
+
+---
+
+## Live Demo
+
+Try the deployed app here: **[Vendor Invoice Intelligence Portal](https://abhideep-sinha-invoice-intelligence-system-app-zctqvf.streamlit.app/)**
+
+It has two modules, chosen from the sidebar: **Freight Cost Prediction** and **Invoice Manual Approval Flag**.
+
+> The app is hosted on Streamlit Community Cloud. If it has been idle, it may go to sleep. Click "Yes, get this app back up!" and wait a minute for it to restart.
 
 ---
 
@@ -49,14 +62,15 @@ intelligent-voice/
 │   ├── data_preprocessing.py        # Load data, create labels, split, scale
 │   ├── modelling_evaluation.py      # Random Forest + GridSearchCV, evaluation
 │   └── train.py                     # Entry point: trains and saves the model
-├── inference/
-│   └── predict_freight.py           # Load the saved model and predict
 ├── models/
 │   ├── predict_freight_model.pkl    # Trained freight model
 │   ├── predict_flag_invoice.pkl     # Trained invoice flagging model
 │   └── scaler.pkl                   # StandardScaler for invoice features
 ├── notebook/                        # Exploration and analysis notebooks
-├── app.py                           # Streamlit UI  (TODO: confirm file name)
+├── inference/
+│   ├── predict_freight.py           # Freight prediction helper used by the app
+│   └── predict_invoice.py           # Invoice flag prediction helper used by the app
+├── app.py                           # Streamlit UI
 └── README.md
 ```
 
@@ -78,8 +92,8 @@ The data comes from a SQLite database, `data/inventory.db`. The code uses these 
 ### 1. Freight Cost Prediction
 
 - **Goal:** predict the freight cost of an order.
-- **Model:** a scikit-learn linear regression model (TODO: confirm exact model).
-- **Input:** invoice amount in dollars (TODO: confirm the full feature list).
+- **Model:** a scikit-learn linear regression model.
+- **Input:** `Quantity` and invoice `Dollars`.
 - **Output:** predicted freight cost, rounded.
 - **Saved to:** `models/predict_freight_model.pkl`
 
@@ -131,29 +145,31 @@ That is 216 combinations, or 1,080 fits across the folds.
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url>
-cd intelligent-voice
+git clone https://github.com/Abhideep-Sinha/Invoice-Intelligence-System.git
+cd Invoice-Intelligence-System
 
 # 2. (Optional) create a virtual environment
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
-pip install pandas scikit-learn joblib streamlit
+pip install pandas numpy scikit-learn joblib streamlit plotly
 ```
 
 Or create a `requirements.txt`:
 
 ```
 pandas
+numpy
 scikit-learn
 joblib
 streamlit
+plotly
 ```
 
 and run `pip install -r requirements.txt`.
 
-Make sure `data/inventory.db` exists before training.
+`data/inventory.db` is about 405 MB, which is over GitHub's 100 MB file limit, so it is **not included in the repository**. To retrain the models, download it separately and place it in the `data/` folder. (TODO: add the download link.) The pre-trained models in `models/` are enough to run the app.
 
 ---
 
@@ -177,28 +193,46 @@ This takes a few minutes because of the grid search, and prints results when it 
 
 ### Run a prediction from the command line
 
-From the project root:
+From the project root, call the inference functions directly:
 
-```bash
-python inference/predict_freight.py
+```python
+from inference.predict_freight import predict_freight_cost
+
+predict_freight_cost({"Quantity": [1200], "Dollars": [18500.0]})
 ```
 
 ---
 
 ## Streamlit App
 
-Start the web interface from the project root:
+Use the hosted version at https://abhideep-sinha-invoice-intelligence-system-app-zctqvf.streamlit.app/, or run it locally. Start the web interface from the project root:
 
 ```bash
 streamlit run app.py
 ```
 
-(TODO: replace `app.py` with your actual file name.)
+The portal is titled **Vendor Invoice Intelligence Portal**. Use the sidebar to choose a module:
 
-The app lets you:
+**1. Freight Cost Prediction**
 
-- enter order details and get a **predicted freight cost**
-- enter invoice details and see whether the invoice is **flagged for review**
+| Input | Description |
+|---|---|
+| Quantity | Number of items on the invoice |
+| Invoice Dollars | Invoice amount |
+
+Click **Predict Freight Cost** to see the estimated freight cost.
+
+**2. Invoice Manual Approval Flag**
+
+| Input | Description |
+|---|---|
+| Invoice Quantity | Quantity on the invoice |
+| Invoice Dollars | Invoice amount |
+| Freight Cost | Freight charged |
+| Total Item Quantity | Quantity across the PO's items |
+| Total Item Dollars | Dollar total across the PO's items |
+
+Click **Evaluate Invoice Risk**. The app shows either **MANUAL APPROVAL required** or **Safe for auto-approval**.
 
 (TODO: add screenshots, for example `![App screenshot](docs/screenshot.png)`)
 
@@ -212,6 +246,7 @@ The app lets you:
 - **scikit-learn**: models, scaling, grid search, metrics
 - **joblib**: saving and loading models
 - **Streamlit**: user interface
+- **Plotly**: charts (imported in the app)
 
 ---
 
@@ -223,6 +258,7 @@ The app lets you:
 | `FileNotFoundError: models/scaler.pkl` | The `models/` folder does not exist where you ran the script. Create it, or build paths from `Path(__file__)`. |
 | Models saved in the wrong `models/` folder | Relative paths depend on the folder you run from. Use `Path(__file__)`-based paths. |
 | `ValueError: setting an array element with a sequence` | Input to `model.predict` contains lists in cells. Pass plain numbers when building the DataFrame. |
+| `ModuleNotFoundError: predict_freight` in the app | Inside `inference/`, import with the full path: `from inference.predict_freight import predict_freight_cost`. |
 | `ModuleNotFoundError: modeling_evaluation` | The import name must match the file name (`modelling_evaluation.py`). |
 
 ---
@@ -232,11 +268,11 @@ The app lets you:
 - Add more features for freight prediction (distance, vendor, weight)
 - Compare more models (Gradient Boosting, XGBoost) for both tasks
 - Label invoices with real review outcomes instead of fixed rules
-- Add unit tests and a `requirements.txt`
-- Deploy the app (Streamlit Community Cloud or Docker)
+- Add unit tests
+- Add a Docker setup for self-hosting
 
 ---
 
 ## Author
 
-Abhideep Sinha# Invoice-Intelligence-System
+Abhideep Sinha
